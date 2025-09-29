@@ -43,34 +43,20 @@ app.get(
 );
 
 // Separate consumer service
-let redisConsumer, redisProducer
-
+let redis
 if (Deno.env.get("REDIS_HOST")) {
-    redisConsumer = new Redis(
+    redis = new Redis(
         Number.parseInt(Deno.env.get("REDIS_PORT")),
         Deno.env.get("REDIS_HOST"),
     )
-    redisProducer = new Redis(
+    redis = new Redis(
         Number.parseInt(Deno.env.get("REDIS_PORT")),
         Deno.env.get("REDIS_HOST"),
     )
 } else {
-    redisConsumer = new Redis(6379, "redis")
-    redisProducer = new Redis(6379, "redis")
+    redis = new Redis(6379, "redis")
+    redis = new Redis(6379, "redis")
 }
-
-// const consume = async () => {
-//     while (true) {
-//         const result = await redisConsumer.brpop(QUEUE_NAME, 0);
-//         console.log('result: ', result)
-//         if (result) {
-//             const [queue, submissionId] = result
-//             await sql`UPDATE exercise_submissions SET grading_status = 'graded', grade = 100 WHERE id = ${submissionId}`
-//         }
-//     }
-// };
-
-// consume();
 
 app.post("/api/exercises/:id/submissions", async (c) => {
     const exerciseId = Number(c.req.param("id"))
@@ -83,9 +69,8 @@ app.post("/api/exercises/:id/submissions", async (c) => {
   `
     const submissionId = result[0].id
 
-    await redisProducer.lpush(QUEUE_NAME, String(submissionId))
+    await redis.lpush(QUEUE_NAME, String(submissionId))
 
     return c.json({ id: submissionId }, 201)
 });
-
 export default app;

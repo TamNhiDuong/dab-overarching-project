@@ -33,6 +33,19 @@ services:
     depends_on:
       - database
 
+  grader:
+    build: grader
+    ports:
+      - 8001:8000 # host:container
+    restart: unless-stopped
+    volumes:
+      - ./grader:/app
+    env_file:
+      - project.env
+    depends_on:
+      - database
+      - redis
+
   redis:
     image: redis:7.4.2
     command: redis-server /usr/local/etc/redis/redis.conf
