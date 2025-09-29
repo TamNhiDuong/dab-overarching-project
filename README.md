@@ -72,3 +72,9 @@ Caching data in the server, test the performance with
 ```sh
 curl -w ' (%{time_total}s)' localhost:8000/hello/cache
 ```
+
+Test a request
+
+```sh
+curl -X POST -d '{"source_code": "Queueing"}' localhost:8000/api/exercises/1/submissions
+```
