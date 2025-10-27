@@ -1,0 +1,25 @@
+---
+import { getCollection, render } from "astro:content";
+
+export const getStaticPaths = async () => {
+  const recipes = await getCollection("recipes");
+  return recipes.map((entry) => ({
+    params: {
+      id: entry.id?.replace(".mdx", ""),
+    },
+    props: { entry },
+  }));
+};
+
+const { entry } = Astro.props;
+
+if (!entry) {
+  throw new Error(`No entry found for id = ${Astro.params.id}`);
+}
+
+// Use the `render` helper (the document uses that)
+const { Content } = await render(entry);
+---
+
+<h1>{entry.data.title}</h1>
+<Content />
