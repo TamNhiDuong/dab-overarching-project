@@ -1,24 +1,38 @@
-let comments = $state(
-    typeof localStorage !== "undefined" && localStorage.getItem("comments")
-        ? JSON.parse(localStorage.getItem("comments"))
-        : []
-);
+// src/states/commentState.svelte.js
 
-const useCommentState = () => {
+let commentsById = $state({}); // keys are recipe IDs, values are arrays of comments
+
+const useCommentState = (recipeId) => {
+    // Load comments for this recipe from localStorage
+    if (typeof localStorage !== "undefined") {
+        const stored = localStorage.getItem(`comments-${recipeId}`);
+        if (stored && !commentsById[recipeId]) {
+            commentsById[recipeId] = JSON.parse(stored);
+        }
+    }
+
+    // Initialize if missing
+    if (!commentsById[recipeId]) {
+        commentsById[recipeId] = [];
+    }
+
     return {
         get count() {
-            return comments.length;
+            return commentsById[recipeId].length;
         },
         get comments() {
-            return comments;
+            return commentsById[recipeId];
         },
         add: (comment) => {
             if (comment.trim() !== "") {
-                comments.push(comment);
+                commentsById[recipeId].push(comment);
 
-                // Save updated comments to localStorage
+                // Save to localStorage
                 if (typeof localStorage !== "undefined") {
-                    localStorage.setItem("comments", JSON.stringify(comments));
+                    localStorage.setItem(
+                        `comments-${recipeId}`,
+                        JSON.stringify(commentsById[recipeId])
+                    );
                 }
             }
         },
