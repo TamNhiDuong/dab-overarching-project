@@ -1,4 +1,7 @@
 ---
+import CommentStatistics from "../../components/CommentStatistics.svelte";
+import Comments from "../../components/Comments.svelte";
+
 import { getCollection, render } from "astro:content";
 
 export const getStaticPaths = async () => {
@@ -22,4 +25,9 @@ const { Content } = await render(entry);
 ---
 
 <h1>{entry.data.title}</h1>
+
+<CommentStatistics client:load />
+
 <Content />
+
+<Comments client:load />
