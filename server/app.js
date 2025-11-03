@@ -73,4 +73,42 @@ app.post("/api/exercises/:id/submissions", async (c) => {
 
     return c.json({ id: submissionId }, 201)
 });
+
+// Content, state, communication
+// GET a single exercise by ID
+app.get("/api/exercises/:id", async (c) => {
+    const id = Number(c.req.param("id"));
+
+    const rows = await sql`SELECT id, title, description FROM exercises WHERE id = ${id}`;
+
+    if (rows.length === 0) {
+        // Proper 404 response
+        return c.text("", 404);
+    }
+
+    const row = rows[0];
+    return c.json({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+    });
+});
+
+app.get("/api/submissions/:id/status", async (c) => {
+    const id = Number(c.req.param("id"));
+
+    const rows = await sql`SELECT grading_status, grade FROM exercise_submissions WHERE id = ${id}`;
+
+    if (rows.length === 0) {
+        return c.text("", 404);
+    }
+
+    const row = rows[0];
+    return c.json({
+        grading_status: row.grading_status,
+        grade: row.grade,
+    });
+});
+
+
 export default app;

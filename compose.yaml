@@ -1,5 +1,7 @@
+version: "3.9"
+
 services:
-  #docker exec -it overarching_dab_postgresql_database psql -U username database
+  # PostgreSQL database
   database:
     container_name: overarching_dab_postgresql_database
     image: postgres:17.0
@@ -11,6 +13,7 @@ services:
       -c shared_preload_libraries=auto_explain,pg_stat_statements
       -c auto_explain.log_min_duration=10
 
+  # Database migration
   database-migrations:
     image: flyway/flyway:10
     env_file:
@@ -21,8 +24,9 @@ services:
       - ./database-migrations:/flyway/sql
     command: -connectRetries=60 -baselineOnMigrate=true migrate
 
+  # Main server (API)
   server:
-    build: server
+    build: ./server
     restart: unless-stopped
     volumes:
       - ./server:/app
@@ -37,10 +41,9 @@ services:
       - "traefik.http.routers.server-router.rule=PathPrefix(`/api`)"
       - "traefik.http.services.server-service.loadbalancer.server.port=8000"
 
+  # Grader service
   grader:
-    build: grader
-    ports:
-      - 8001:8000 # host:container
+    build: ./grader
     restart: unless-stopped
     volumes:
       - ./grader:/app
@@ -49,15 +52,25 @@ services:
     depends_on:
       - database
       - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grader-router.entrypoints=web"
+      - "traefik.http.routers.grader-router.rule=PathPrefix(`/grader-api`)"
+      - "traefik.http.routers.grader-router.middlewares=grader-rewrite"
+      - "traefik.http.middlewares.grader-rewrite.replacepathregex.regex=^/grader-api(.*)"
+      - "traefik.http.middlewares.grader-rewrite.replacepathregex.replacement=/api$$1"
+      - "traefik.http.services.grader-service.loadbalancer.server.port=8000"
 
+  # Redis queue
   redis:
     image: redis:7.4.2
     command: redis-server /usr/local/etc/redis/redis.conf
     volumes:
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
 
+  # Frontend client
   client:
-    build: client
+    build: ./client
     restart: unless-stopped
     volumes:
       - ./client:/app
@@ -69,7 +82,7 @@ services:
       - "traefik.http.routers.client-router.rule=PathPrefix(`/`)"
       - "traefik.http.services.client-service.loadbalancer.server.port=4321"
 
-  # Traffic distribution and load balancing
+  # Traefik load balancer
   traefik:
     image: traefik:v3.3
     command:
@@ -77,7 +90,14 @@ services:
       - "--providers.docker=true"
       - "--entrypoints.web.address=:8000"
     ports:
-      - "8080:8080"
-      - "8000:8000"
+      - "8080:8080" # Traefik dashboard
+      - "8000:8000" # Public entrypoint
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  # Adding LGTM for monitoring
+  lgtm:
+    image: grafana/otel-lgtm:0.8.6
+    ports:
+      - "3000:3000"
+      - "4318:4318"
