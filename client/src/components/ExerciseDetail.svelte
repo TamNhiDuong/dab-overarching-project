@@ -1,5 +1,7 @@
 <script>
   import { onMount } from "svelte";
+  import { useUserState } from "../states/userState.svelte.js";
+  const user = useUserState();
 
   // Props from parent
   const props = $props();
@@ -67,20 +69,30 @@
   <h1>{exercise.title}</h1>
   <p>{exercise.description}</p>
 
-  <textarea bind:value={text}></textarea>
-  <br />
-  <button
-    on:click={handleSubmit}
-    disabled={submitted && gradingStatus !== "graded"}
-  >
-    Submit
-  </button>
+  {#if user.loading}
+    <p>Loading...</p>
+  {:else if !user.email}
+    <p>Login or register to complete exercises.</p>
+  {:else}
+    <!-- editor, submit button, grading UI -->
 
-  {#if submitted}
-    <p>Grading status: {gradingStatus}</p>
-    {#if gradingStatus === "graded"}
-      <p>Grade: {grade}</p>
+    <textarea bind:value={text}></textarea>
+    <br />
+    <button
+      on:click={handleSubmit}
+      disabled={submitted && gradingStatus !== "graded"}
+    >
+      Submit
+    </button>
+
+    {#if submitted}
+      <p>Grading status: {gradingStatus}</p>
+      {#if gradingStatus === "graded"}
+        <p>Grade: {grade}</p>
+      {/if}
     {/if}
+
+    <!-- editor, submit button, grading UI -->
   {/if}
 {:else}
   <h1>Exercise not found</h1>

@@ -1,3 +1,7 @@
+---
+import UserInfo from "../components/auth/UserInfo.svelte";
+---
+
 <!doctype html>
 <html lang="en">
 	<head>
@@ -8,6 +12,9 @@
 		<title>Astro Basics</title>
 	</head>
 	<body>
+	    <header>
+            <UserInfo client:visible />
+        </header>
 		<slot />
 	</body>
 </html>

@@ -5,6 +5,8 @@ import postgres from "postgres";
 import { cache } from "@hono/hono/cache";
 import { Redis } from "ioredis";
 
+import { auth } from "./auth.js";
+
 const app = new Hono();
 const sql = postgres();
 
@@ -13,6 +15,42 @@ const QUEUE_NAME = "submissions";
 app.use("/*", cors());
 app.use("/*", logger());
 
+// Auth: Retrieve user info from request headers
+app.use("*", async (c, next) => {
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    console.log('session: ', session)
+    if (!session) {
+        return next();
+    }
+
+    c.set("user", session.user.name);
+    return next();
+});
+
+// Auth
+app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw));
+
+// Limiting access
+app.use("/api/exercises/:id/submissions", async (c, next) => {
+    const user = c.get("user");
+    if (!user) {
+        c.status(401);
+        return c.json({ message: "Unauthorized" });
+    }
+    await next();
+});
+
+// Limiting access
+app.use("/api/submissions/:id/status", async (c, next) => {
+    const user = c.get("user");
+    if (!user) {
+        c.status(401);
+        return c.json({ message: "Unauthorized" });
+    }
+    await next();
+});
+
+// ENDPOINTS
 app.get("/", (c) => c.json({ message: "Hello world!" }));
 
 // get & cache languages
@@ -49,12 +87,7 @@ if (Deno.env.get("REDIS_HOST")) {
         Number.parseInt(Deno.env.get("REDIS_PORT")),
         Deno.env.get("REDIS_HOST"),
     )
-    redis = new Redis(
-        Number.parseInt(Deno.env.get("REDIS_PORT")),
-        Deno.env.get("REDIS_HOST"),
-    )
 } else {
-    redis = new Redis(6379, "redis")
     redis = new Redis(6379, "redis")
 }
 
@@ -94,6 +127,7 @@ app.get("/api/exercises/:id", async (c) => {
     });
 });
 
+// Added apis
 app.get("/api/submissions/:id/status", async (c) => {
     const id = Number(c.req.param("id"));
 
@@ -108,6 +142,18 @@ app.get("/api/submissions/:id/status", async (c) => {
         grading_status: row.grading_status,
         grade: row.grade,
     });
+});
+
+app.get("/api/exercises/:id/submissions", async (c) => {
+    const id = Number(c.req.param("id"));
+
+    const rows = await sql`SELECT * FROM exercise_submissions WHERE exercise_id = ${id}`;
+
+    if (rows.length === 0) {
+        return c.text("", 404);
+    }
+
+    return c.json(rows);
 });
 
 

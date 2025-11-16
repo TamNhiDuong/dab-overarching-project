@@ -2,10 +2,9 @@
 export const prerender = false;
 
 import Exercises from '../../components/Exercises.svelte';
+import Layout from '../../layouts/Layout.astro';
 const { id } = Astro.params;
 ---
-<html>
-  <body>
-    <Exercises client:load langId={id} />
-  </body>
-</html>
+<Layout>
+  <Exercises client:load langId={id} />
+</Layout>
