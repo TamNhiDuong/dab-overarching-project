@@ -156,5 +156,11 @@ app.get("/api/exercises/:id/submissions", async (c) => {
     return c.json(rows);
 });
 
+// lgtm
+app.get("/api/lgtm-test", (c) => {
+  console.log("Hello log collection :)");
+  return c.json({ message: "Hello, world!" });
+});
+
 
 export default app;
