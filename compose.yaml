@@ -12,6 +12,8 @@ services:
       postgres
       -c shared_preload_libraries=auto_explain,pg_stat_statements
       -c auto_explain.log_min_duration=10
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
 
   # Database migration
   database-migrations:
@@ -101,3 +103,5 @@ services:
     ports:
       - "3000:3000"
       - "4318:4318"
+    volumes:
+      - ./lgtm-data:/data
