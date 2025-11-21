@@ -24,6 +24,7 @@ app.use("*", async (c, next) => {
     }
 
     c.set("user", session.user.name);
+    c.set("userId", session.user.id); 
     return next();
 });
 
@@ -92,19 +93,30 @@ if (Deno.env.get("REDIS_HOST")) {
 }
 
 app.post("/api/exercises/:id/submissions", async (c) => {
-    const exerciseId = Number(c.req.param("id"))
-    const { source_code } = await c.req.json();
+    const userId = c.get("userId"); // retrieved from auth middleware
+    if (!userId) {
+        return c.json({ error: "Unauthorized" }, 401);
+    }
 
-    const result = await sql`
-    INSERT INTO exercise_submissions (exercise_id, source_code)
-    VALUES (${exerciseId}, ${source_code})
-    RETURNING id
-  `
-    const submissionId = result[0].id
+    const exerciseId = Number(c.req.param("id"));
+    const body = await c.req.json();
 
-    await redis.lpush(QUEUE_NAME, String(submissionId))
+    // Your frontend must send: { source_code: "...", language: "..." } 
+    const { source_code } = body;
 
-    return c.json({ id: submissionId }, 201)
+    if (!source_code) {
+        return c.json({ error: "Missing source_code" }, 400);
+    }
+
+    const rows = await sql`
+        INSERT INTO exercise_submissions (exercise_id, user_id, source_code)
+        VALUES (${exerciseId}, ${userId}, ${source_code})
+        RETURNING id;
+    `;
+
+    console.log('rows:::::: ', rows)
+
+    return c.json({ id: rows[0].id }, 201);
 });
 
 // Content, state, communication
@@ -129,20 +141,34 @@ app.get("/api/exercises/:id", async (c) => {
 
 // Added apis
 app.get("/api/submissions/:id/status", async (c) => {
-    const id = Number(c.req.param("id"));
+  const userId = c.get("userId"); // authenticated user ID
 
-    const rows = await sql`SELECT grading_status, grade FROM exercise_submissions WHERE id = ${id}`;
+  if (!userId) {
+    return c.text("Unauthorized", 401);
+  }
 
-    if (rows.length === 0) {
-        return c.text("", 404);
-    }
+  const submissionId = Number(c.req.param("id"));
 
-    const row = rows[0];
-    return c.json({
-        grading_status: row.grading_status,
-        grade: row.grade,
-    });
+  // Only select submission if it belongs to the logged-in user
+  const rows = await sql`
+    SELECT grading_status, grade
+    FROM exercise_submissions
+    WHERE id = ${submissionId} AND user_id = ${userId}
+  `;
+
+  if (rows.length === 0) {
+    // No submission found for this user + ID
+    return c.text("", 404);
+  }
+
+  const row = rows[0];
+
+  return c.json({
+    grading_status: row.grading_status,
+    grade: row.grade,
+  });
 });
+
 
 app.get("/api/exercises/:id/submissions", async (c) => {
     const id = Number(c.req.param("id"));

@@ -41,24 +41,49 @@ const consume = async () => {
             continue
         }
 
-        // Mark as processing
+        // Mark submission as processing
         await sql`
-      UPDATE exercise_submissions
-      SET grading_status = 'processing'
-      WHERE id = ${submissionId}
-    `
+            UPDATE exercise_submissions
+            SET grading_status = 'processing'
+            WHERE id = ${submissionId}
+        `
 
-        // Simulate grading
+        // Fetch submission (code + exercise_id)
+        const [submission] = await sql`
+            SELECT id, exercise_id, source_code
+            FROM exercise_submissions
+            WHERE id = ${submissionId}
+        `
+
+        // Fetch solution code from exercises table
+        const [exercise] = await sql`
+            SELECT solution
+            FROM exercises
+            WHERE id = ${submission.exercise_id}
+        `
+
+        const submittedCode = submission.source_code ?? ""
+        const solutionCode = exercise?.solution ?? ""
+
+        // Compute Levenshtein distance
+        const distance = levenshteinDistance(submittedCode, solutionCode)
+
+        // Compute grade
+        const maxLen = Math.max(submittedCode.length, solutionCode.length) || 1
+        const rawScore = 1 - distance / maxLen
+        const grade = Math.max(0, Math.ceil(100 * rawScore))
+
+        // Simulate grading time: 1–3 seconds
         const wait = 1000 + Math.floor(Math.random() * 2000)
         await sleep(wait)
 
-        const grade = Math.floor(Math.random() * 101)
-
+        // Update final grade
         await sql`
-      UPDATE exercise_submissions
-      SET grading_status = 'graded', grade = ${grade}
-      WHERE id = ${submissionId}
-    `
+            UPDATE exercise_submissions
+            SET grading_status = 'graded',
+                grade = ${grade}
+            WHERE id = ${submissionId}
+        `
     }
 }
 

@@ -1,7 +1,7 @@
 Run the client:
 
 ```sh
-docker compose run client deno install && docker compose build --no-cache && docker compos e up --remove-orphans
+docker compose run client deno install && docker compose build --no-cache && docker compose up --remove-orphans
 ```
 
 Run the server:
@@ -77,4 +77,9 @@ Test a request
 
 ```sh
 curl -X POST -d '{"source_code": "Queueing"}' localhost:8000/api/exercises/1/submissions
+```
+
+Run data migration
+```sh
+docker compose run --rm database-migrations
 ```
