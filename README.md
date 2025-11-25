@@ -83,3 +83,18 @@ Run data migration
 ```sh
 docker compose run --rm database-migrations
 ```
+
+Test machine learning api
+Train the model first, it will generate a binary file model.joblib
+```sh
+curl -X POST -H "Content-Type: application/json" \
+-d '[{"exercise":1,"code":"SELECT * FROM secret;","grade":95}]' \
+localhost:8000/inference-api/train
+```
+
+Use the model to predict
+```sh
+curl -X POST -H "Content-Type: application/json" \
+-d '{"exercise": 1, "code": "SELECT * FROM secret;"}' \
+localhost:8000/inference-api/predict
+```

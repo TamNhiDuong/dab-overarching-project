@@ -3,7 +3,6 @@
   import { useUserState } from "../states/userState.svelte.js";
   const user = useUserState();
 
-  // Props from parent
   const props = $props();
   let exId = props.exId;
 
@@ -16,6 +15,10 @@
   let submissionId = $state(null);
   let gradingStatus = $state("");
   let grade = $state(null);
+
+  // Prediction state
+  let prediction = $state(null);
+  let timer = null;
 
   async function handleSubmit() {
     if (!text) return;
@@ -54,11 +57,38 @@
     }, 500);
   }
 
+  // Prediction logic (called when user stops typing)
+  function handleInput() {
+    if (timer) clearTimeout(timer);
+
+    timer = setTimeout(async () => {
+      if (!text.trim()) return;
+
+      try {
+        const res = await fetch("/inference-api/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ exercise: exId, code: text }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          prediction = Math.round(data.prediction);
+        } else {
+          prediction = null;
+          console.error("Prediction request failed");
+        }
+      } catch (err) {
+        prediction = null;
+        console.error("Error fetching prediction:", err);
+      }
+    }, 500); // 500ms debounce
+  }
+
   onMount(async () => {
     const res = await fetch(`/api/exercises/${exId}`);
     if (res.ok) {
-      const data = await res.json();
-      exercise = data;
+      exercise = await res.json();
     } else {
       exercise = { id: null, title: "Exercise not found", description: "" };
     }
@@ -74,9 +104,14 @@
   {:else if !user.email}
     <p>Login or register to complete exercises.</p>
   {:else}
-    <!-- editor, submit button, grading UI -->
+    <!-- Editor -->
+    <textarea bind:value={text} on:input={handleInput}></textarea>
 
-    <textarea bind:value={text}></textarea>
+    <!-- Prediction -->
+    {#if prediction !== null}
+      <p>Correctness estimate: {prediction}%</p>
+    {/if}
+
     <br />
     <button
       on:click={handleSubmit}
@@ -91,8 +126,6 @@
         <p>Grade: {grade}</p>
       {/if}
     {/if}
-
-    <!-- editor, submit button, grading UI -->
   {/if}
 {:else}
   <h1>Exercise not found</h1>
